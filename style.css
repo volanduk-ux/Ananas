@@ -21,21 +21,28 @@ body{font-family:-apple-system,system-ui,Segoe UI,Roboto,Arial,sans-serif;margin
 .iconbtn{background:#fff;color:#111;border:1px solid #ddd;line-height:1}
 
 .player-section{border:1px solid var(--line);border-radius:12px;background:var(--panel);padding:10px;margin:8px 0}
+.player-head{display:flex;justify-content:space-between;align-items:center}
 .player-name{margin:2px 0 8px;font-size:15px}
 .player-name.you{color:#0b7}
+.score{font-weight:800;color:#444}
+.score.you{color:#0a7f33}
 
 .rows{display:grid;grid-template-columns:1fr;gap:6px}
+.row-line{display:flex;justify-content:space-between;align-items:center}
 .row-name{font-weight:700;font-size:13px;color:#333;margin-top:4px}
+.row-score{font-weight:700;color:#555}
 .slots{display:grid;grid-template-columns:repeat(5,var(--card-w));gap:var(--gap)}
 .slot{width:var(--card-w);height:var(--card-h);border:1px dashed #bbb;border-radius:var(--radius);background:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;color:#333;user-select:none;cursor:pointer}
 
 .center-zone{display:flex;justify-content:center;margin:10px 0}
-.deal-wrap{border:1px solid var(--line);border-radius:12px;background:var(--panel);padding:10px;display:grid;gap:8px;justify-items:center;max-width:600px;width:100%}
+.deal-wrap{border:1px solid var(--line);border-radius:12px;background:var(--panel);padding:10px;display:grid;gap:8px;justify-items:center;max-width:640px;width:100%}
 .deal-title{font-weight:700}
-.deal-card{width:calc(var(--card-w) * 1.1);height:calc(var(--card-h) * 1.1);border:2px solid #aaa;border-radius:var(--radius);display:flex;align-items:center;justify-content:center;font-weight:800;position:relative}
-.deal-card.empty{background:repeating-linear-gradient(45deg,#fafafa,#fafafa 8px,#f1f1f1 8px,#f1f1f1 16px);color:#aaa}
+.deal-info{display:flex;gap:12px;align-items:center}
+.deal-pool{display:flex;gap:6px;flex-wrap:wrap;min-height:calc(var(--card-h) + 4px)}
+.pool-card{width:var(--card-w);height:var(--card-h);border:1px solid #aaa;border-radius:var(--radius);display:flex;align-items:center;justify-content:center;font-weight:800;background:#fff;position:relative}
+.pool-card .rm{position:absolute;top:2px;right:4px;font-size:12px;color:#999}
+
 .deal-ctrls{display:flex;gap:8px}
-.hint{margin:0;color:var(--muted);font-size:12px;text-align:center}
 
 .card{border:1px solid var(--line);border-radius:12px;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.04);padding:12px;margin-top:10px}
 .muted{color:var(--muted);font-size:13px}
@@ -49,7 +56,7 @@ body{font-family:-apple-system,system-ui,Segoe UI,Roboto,Arial,sans-serif;margin
 .red{color:#c62828}.black{color:#111}
 .deck{display:grid;grid-template-columns:repeat(13,var(--card-w));gap:var(--gap)}
 
-/* MODAL (fixed z-index fix) */
+/* MODAL (слои) */
 .modal{position:fixed;inset:0;display:none}
 .modal.show{display:block}
 .modal-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.35);z-index:1}
