@@ -1,70 +1,396 @@
-:root{
-  --card-w: clamp(34px, 7.2vw, 58px);
-  --card-h: calc(var(--card-w) * 1.48);
-  --gap: 8px; --radius: 10px;
-  --bg:#f3f4f7; --ink:#111; --muted:#666; --line:#e5e7eb; --panel:#fff;
-}
-*{box-sizing:border-box}
-html,body{height:100%}
-body{font-family:-apple-system,system-ui,Segoe UI,Roboto,Arial,sans-serif;margin:0;background:var(--bg);color:var(--ink)}
-.safe{padding:env(safe-area-inset-top) 12px calc(12px + env(safe-area-inset-bottom)) 12px;max-width:980px;margin:0 auto}
+(()=> {
+  /* ====== Константы и утилиты ====== */
+  const RANKS = ["2","3","4","5","6","7","8","9","T","J","Q","K","A"];
+  const SUITS = ["s","h","d","c"];
+  const sym = {s:"♠",h:"♥",d:"♦",c:"♣"};
+  const col = {s:"black",c:"black",h:"red",d:"red"};
+  const R2V = {}; RANKS.forEach((r,i)=>R2V[r]=i+2);
 
-.hdr{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:end;margin:10px 0 6px}
-.ttl{font-weight:700;font-size:18px}
-.unit{display:flex;flex-direction:column;gap:4px}
-.unit input{width:90px;padding:8px;border:1px solid #ccc;border-radius:8px}
-.actions{display:flex;gap:6px;justify-self:end}
+  // Роялти (американские)
+  const RB = {straight:2,flush:4,full_house:6,four_kind:10,straight_flush:15,royal_flush:25};
+  const RM = {three_kind:2,straight:4,flush:8,full_house:12,four_kind:20,straight_flush:30,royal_flush:50};
+  const TP = {6:1,7:2,8:3,9:4,10:5,11:6,12:7,13:8,14:9};
+  const TT = {2:10,3:11,4:12,5:13,6:14,7:15,8:16,9:17,10:18,11:19,12:20,13:21,14:22};
 
-.btn,.btn2,.iconbtn{border-radius:10px;padding:10px 14px;font-weight:600;cursor:pointer}
-.btn{background:#111;color:#fff;border:1px solid #111}
-.btn2{background:#fff;color:#111;border:1px solid #999}
-.iconbtn{background:#fff;color:#111;border:1px solid #ddd;line-height:1}
+  const cmp=(a,b)=>{ for(let i=0;i<Math.max(a.length,b.length);i++){ const A=a[i]??-1e9, B=b[i]??-1e9; if(A>B) return 1; if(A<B) return -1; } return 0; };
 
-.player-section{border:1px solid var(--line);border-radius:12px;background:var(--panel);padding:10px;margin:8px 0}
-.player-head{display:flex;justify-content:space-between;align-items:center}
-.player-name{margin:2px 0 8px;font-size:15px}
-.player-name.you{color:#0b7}
-.score{font-weight:800;color:#444}
-.score.you{color:#0a7f33}
+  /* ====== Оценка комбинаций ====== */
+  function p5(cs){
+    const vals=cs.map(c=>R2V[c[0]]).sort((a,b)=>b-a);
+    const suits=cs.map(c=>c[1]);
+    const cnt={}; vals.forEach(v=>cnt[v]=(cnt[v]||0)+1);
+    const by=Object.entries(cnt).map(([v,f])=>({v:+v,f})).sort((a,b)=>(b.f-a.f)||(b.v-a.v));
+    const flush=new Set(suits).size===1;
+    const u=[...new Set(vals)].sort((a,b)=>b-a); let straight=false, high=vals[0];
+    if(u.length>=5 && u[0]-u[4]===4){ straight=true; high=u[0]; }
+    else { const S=new Set(vals); if([14,5,4,3,2].every(x=>S.has(x))){ straight=true; high=5; } }
+    if(straight&&flush){ if(high===14) return {rank:[8,14],key:'royal_flush'}; return {rank:[8,high],key:'straight_flush'}; }
+    if(by[0].f===4){ const four=by[0].v; const k=Math.max(...vals.filter(x=>x!==four)); return {rank:[7,four,k],key:'four_kind'}; }
+    if(by[0].f===3 && by[1] && by[1].f===2){ return {rank:[6,by[0].v,by[1].v],key:'full_house'}; }
+    if(flush) return {rank:[5,...vals],key:'flush'};
+    if(straight) return {rank:[4,high],key:'straight'};
+    if(by[0].f===3){ const t=by[0].v; const ks=vals.filter(x=>x!==t).sort((a,b)=>b-a); return {rank:[3,t,...ks],key:'three_kind'}; }
+    if(by[0].f===2 && by[1] && by[1].f===2){
+      const ph=Math.max(by[0].v,by[1].v), pl=Math.min(by[0].v,by[1].v);
+      const k=Math.max(...vals.filter(x=>x!==ph && x!==pl));
+      return {rank:[2,ph,pl,k],key:'two_pair'};
+    }
+    if(by[0].f===2){ const p=by[0].v; const ks=vals.filter(x=>x!==p).sort((a,b)=>b-a); return {rank:[1,p,...ks],key:'pair'}; }
+    return {rank:[0,...vals],key:'high'};
+  }
+  function p3(cs){
+    const vals=cs.map(c=>R2V[c[0]]).sort((a,b)=>b-a);
+    const cnt={}; vals.forEach(v=>cnt[v]=(cnt[v]||0)+1);
+    const by=Object.entries(cnt).map(([v,f])=>({v:+v,f})).sort((a,b)=>(b.f-a.f)||(b.v-a.v));
+    if(by[0].f===3) return {rank:[2,by[0].v]};
+    if(by[0].f===2){ const pair=by[0].v; const k=Math.max(...vals.filter(x=>x!==pair)); return {rank:[1,pair,k]}; }
+    return {rank:[0,...vals]};
+  }
+  const royT=cs=>{const r=p3(cs).rank; if(r[0]===2) return TT[r[1]]||0; if(r[0]===1) return TP[r[1]]||0; return 0;};
+  const royM=cs=>{const h=p5(cs); let k=h.key; if(k==='straight_flush'&&h.rank[1]===14) k='royal_flush'; return RM[k]||0;};
+  const royB=cs=>{const h=p5(cs); let k=h.key; if(k==='straight_flush'&&h.rank[1]===14) k='royal_flush'; return RB[k]||0;};
+  const foul=(top,mid,bot)=> cmp(p5(bot).rank, p5(mid).rank) < 0;
 
-.rows{display:grid;grid-template-columns:1fr;gap:6px}
-.row-line{display:flex;justify-content:space-between;align-items:center}
-.row-name{font-weight:700;font-size:13px;color:#333;margin-top:4px}
-.row-score{font-weight:700;color:#555}
-.slots{display:grid;grid-template-columns:repeat(5,var(--card-w));gap:var(--gap)}
-.slot{width:var(--card-w);height:var(--card-h);border:1px dashed #bbb;border-radius:var(--radius);background:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;color:#333;user-select:none;cursor:pointer}
+  /* ====== DOM и состояние ====== */
+  const picker = document.getElementById('picker');
+  const pickerDeck = document.getElementById('pickerDeck');
+  const poolEl = document.getElementById('pool');
+  const phaseLabel = document.getElementById('phaseLabel');
+  const drawCounter = document.getElementById('drawCounter');
 
-.center-zone{display:flex;justify-content:center;margin:10px 0}
-.deal-wrap{border:1px solid var(--line);border-radius:12px;background:var(--panel);padding:10px;display:grid;gap:8px;justify-items:center;max-width:640px;width:100%}
-.deal-title{font-weight:700}
-.deal-info{display:flex;gap:12px;align-items:center}
-.deal-pool{display:flex;gap:6px;flex-wrap:wrap;min-height:calc(var(--card-h) + 4px)}
-.pool-card{width:var(--card-w);height:var(--card-h);border:1px solid #aaa;border-radius:var(--radius);display:flex;align-items:center;justify-content:center;font-weight:800;background:#fff;position:relative}
-.pool-card .rm{position:absolute;top:2px;right:4px;font-size:12px;color:#999}
+  // Пул текущей раздачи (массив строк 'As', ...)
+  let pool = [];
+  // Фазы: 'start5' -> 'pine3' (бесконечно до заполнения)
+  let phase = 'start5';
 
-.deal-ctrls{display:flex;gap:8px}
+  /* ====== Слоты игроков ====== */
+  document.querySelectorAll('.slots').forEach(el=>{
+    const n=+el.dataset.n;
+    for(let i=0;i<n;i++){
+      const s=document.createElement('div');
+      s.className='slot';
+      s.addEventListener('click',()=>onSlotTap(s));
+      el.appendChild(s);
+    }
+  });
 
-.card{border:1px solid var(--line);border-radius:12px;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.04);padding:12px;margin-top:10px}
-.muted{color:var(--muted);font-size:13px}
-.result{border-collapse:collapse;width:100%}
-.result th,.result td{border-bottom:1px solid var(--line);padding:8px;text-align:left}
+  /* ====== Пул: UI ====== */
+  function renderPool(){
+    poolEl.innerHTML='';
+    pool.forEach((code,idx)=>{
+      const div=document.createElement('div');
+      div.className='pool-card';
+      div.innerHTML = `<span>${code[0]}${sym[code[1]]}</span><span class="rm">✕</span>`;
+      div.querySelector('.rm').addEventListener('click', ()=>{ pool.splice(idx,1); renderPool(); updatePhaseText(); });
+      poolEl.appendChild(div);
+    });
+    updatePhaseText();
+  }
+  function updatePhaseText(){
+    if (phase==='start5'){
+      phaseLabel.textContent='Старт: выберите 5 карт';
+      drawCounter.textContent = `${pool.length} выбрано`;
+    } else {
+      phaseLabel.textContent='Раунд Pineapple: выберите 3 карты (1 будет сброс)';
+      drawCounter.textContent = `${pool.length} выбрано`;
+    }
+  }
 
-/* карточки */
-.cb{width:var(--card-w);height:var(--card-h);border:1px solid #aaa;border-radius:var(--radius);background:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;position:relative;cursor:pointer}
-.cb.disabled{opacity:.28;pointer-events:none}
-.cb .suit{position:absolute;bottom:4px;right:6px;font-size:12px}
-.red{color:#c62828}.black{color:#111}
-.deck{display:grid;grid-template-columns:repeat(13,var(--card-w));gap:var(--gap)}
+  /* ====== Пикер (колода) ====== */
+  function openPicker(){
+    buildPickerDeck();
+    picker.classList.add('show');
+    picker.setAttribute('aria-hidden','false');
+  }
+  function closePicker(){
+    picker.classList.remove('show');
+    picker.setAttribute('aria-hidden','true');
+  }
+  function buildPickerDeck(){
+    pickerDeck.innerHTML='';
+    const used=new Set(allCards().concat(pool));
+    RANKS.forEach(r=>SUITS.forEach(s=>{
+      const code=r+s;
+      const b=document.createElement('button');
+      b.type='button'; b.className='cb '+(col[s]||'');
+      b.dataset.card=code;
+      b.innerHTML=`<span>${r}</span><span class="suit">${sym[s]}</span>`;
+      if(used.has(code)) b.classList.add('disabled');
+      b.addEventListener('click',()=>selectToPool(code));
+      pickerDeck.appendChild(b);
+    }));
+  }
+  function selectToPool(code){
+    const limit = (phase==='start5') ? 5 : 3;
+    if (pool.length >= limit) return;
+    pool.push(code);
+    renderPool();
+    buildPickerDeck(); // обновить доступность
+    // автоматически закрывать, когда собрали нужное количество
+    if (pool.length===limit) closePicker();
+  }
 
-/* MODAL (слои) */
-.modal{position:fixed;inset:0;display:none}
-.modal.show{display:block}
-.modal-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.35);z-index:1}
-.modal-dialog{position:relative;margin:8vh auto 0 auto;max-width:min(980px,96vw);background:#fff;border-radius:12px;padding:12px;border:1px solid var(--line);z-index:2}
-.modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
-.mh-title{font-weight:700}
+  document.getElementById('openPicker').addEventListener('click', openPicker);
+  document.querySelectorAll('[data-close="picker"]').forEach(el=> el.addEventListener('click', closePicker));
+  document.getElementById('clearPool').addEventListener('click', ()=>{ pool=[]; renderPool(); });
 
-@media (max-width:420px){
-  .hdr{grid-template-columns:1fr 100px auto}
-  .ttl{font-size:16px}
-}
+  /* ====== Размещение карт по слотам (вручную для оппонента и нас при желании) ====== */
+  function onSlotTap(slot){
+    // ручная постановка карт из пула запрещена: ходы ставим через "Предложить ход"
+    // но разрешим если пул пуст (для корректировок/ручного ввода)
+    if (pool.length>0) return;
+    // поставить карту нельзя — в этой версии ручную постановку делаем только через демо/редактирование.
+  }
+
+  /* ====== Сбор карт по группам и обновление счёта рядом с линиями ====== */
+  const collect = g => Array.from(document.querySelector(`.slots[data-g="${g}"]`).querySelectorAll('.slot')).map(s=>s.dataset.card).filter(Boolean);
+  function updateLineScores(){
+    const p1={top:collect('p1_top'), mid:collect('p1_mid'), bot:collect('p1_bot')};
+    const p2={top:collect('p2_top'), mid:collect('p2_mid'), bot:collect('p2_bot')};
+    document.getElementById('p1_top_sc').textContent = p1.top.length===3 ? royT(p1.top) : 0;
+    document.getElementById('p1_mid_sc').textContent = p1.mid.length===5 ? royM(p1.mid) : 0;
+    document.getElementById('p1_bot_sc').textContent = p1.bot.length===5 ? royB(p1.bot) : 0;
+    document.getElementById('p2_top_sc').textContent = p2.top.length===3 ? royT(p2.top) : 0;
+    document.getElementById('p2_mid_sc').textContent = p2.mid.length===5 ? royM(p2.mid) : 0;
+    document.getElementById('p2_bot_sc').textContent = p2.bot.length===5 ? royB(p2.bot) : 0;
+
+    // суммарные пока показываем простую сумму роялти уже собранных линий (для визуального контроля)
+    const sumP1 = (+document.getElementById('p1_top_sc').textContent)
+                + (+document.getElementById('p1_mid_sc').textContent)
+                + (+document.getElementById('p1_bot_sc').textContent);
+    const sumP2 = (+document.getElementById('p2_top_sc').textContent)
+                + (+document.getElementById('p2_mid_sc').textContent)
+                + (+document.getElementById('p2_bot_sc').textContent);
+    document.getElementById('scoreP1').textContent = sumP1;
+    document.getElementById('scoreP2').textContent = sumP2;
+  }
+  const setCardToFirstEmpty = (group, code)=>{
+    const cont=document.querySelector(`.slots[data-g="${group}"]`);
+    const slots=cont.querySelectorAll('.slot');
+    for(const s of slots){ if(!s.dataset.card){ s.dataset.card=code; s.textContent=code[0]+sym[code[1]]; break; } }
+  };
+
+  /* ====== Предложение лучшего хода для нас ====== */
+  document.getElementById('applyBest').addEventListener('click', ()=>{
+    if (phase==='start5' && pool.length!==5){ alert('Сначала наберите 5 карт в пул.'); return; }
+    if (phase==='pine3' && pool.length!==3){ alert('В этом раунде нужно выбрать ровно 3 карты.'); return; }
+    const best = (phase==='start5') ? bestStart5() : bestPine3();
+    if (!best){ alert('Нет допустимых ходов.'); return; }
+    // применяем
+    best.moves.forEach(m => setCardToFirstEmpty(m.group, m.card));
+    pool = []; renderPool();
+    updateLineScores();
+    // смена фазы
+    if (phase==='start5') phase='pine3';
+  });
+
+  // эвристика качества
+  function evalBoard(p1){
+    // штраф за фолт
+    let penalty = 0;
+    if (p1.mid.length===5 && p1.bot.length===5 && foul(p1.top, p1.mid, p1.bot)) penalty -= 1000;
+
+    // роялти собранных линий
+    let score = 0;
+    if (p1.top.length===3) score += royT(p1.top)*2; // чутка приоритезируем верх
+    if (p1.mid.length===5) score += royM(p1.mid);
+    if (p1.bot.length===5) score += royB(p1.bot);
+
+    // потенциал: бонусы за пары/сеты/флэш-дро и стрит-дро (очень легко)
+    const potLine = (cards,isTop=false)=>{
+      if (cards.length===0) return 0;
+      const vals = cards.map(c=>R2V[c[0]]);
+      const cnt={}; vals.forEach(v=>cnt[v]=(cnt[v]||0)+1);
+      const pairs = Object.values(cnt).filter(x=>x===2).length;
+      const trips = Object.values(cnt).filter(x=>x===3).length;
+      const suitCnt={}; cards.forEach(c=>suitCnt[c[1]]=(suitCnt[c[1]]||0)+1);
+      const maxSuit = Math.max(...Object.values(suitCnt));
+      const uniqRanks = new Set(vals).size;
+      let bonus = pairs*1.5 + trips*3 + (maxSuit>=4?2:0) + (uniqRanks>=4?1:0);
+      if (isTop) bonus *= 1.2;
+      return bonus;
+    };
+    score += potLine(p1.top,true) + potLine(p1.mid) + potLine(p1.bot);
+
+    return score + penalty;
+  }
+
+  function cloneP1(){
+    return {
+      top: collect('p1_top').slice(),
+      mid: collect('p1_mid').slice(),
+      bot: collect('p1_bot').slice()
+    };
+  }
+
+  function freeSlots(p1){
+    return {
+      top: 3 - p1.top.length,
+      mid: 5 - p1.mid.length,
+      bot: 5 - p1.bot.length
+    };
+  }
+
+  function bestStart5(){
+    const cards = pool.slice(); // 5 карт
+    const p1base = cloneP1();
+    const free = freeSlots(p1base);
+    if (free.top+free.mid+free.bot < cards.length) return null;
+
+    // переберём распределения 5 карт по линиям (ограничения по вместимости)
+    const groups = ['top','mid','bot'];
+    let best=null;
+
+    // генерируем все назначения карт -> (группа, индекс)
+    function dfs(i, curP1, moves){
+      if (i===cards.length){
+        // оценка
+        const score = evalBoard(curP1);
+        if (!best || score>best.score) best={score, moves:moves.slice()};
+        return;
+      }
+      const card = cards[i];
+      for (const g of groups){
+        const cap = (g==='top'?3: (g==='mid'?5:5));
+        if (curP1[g].length < cap){
+          // временно положим
+          curP1[g].push(card);
+          moves.push({group:`p1_${g}`, card});
+          // быстрый отсев: если обе 5-карточные линии заполнены, не допускаем фолт
+          let ok=true;
+          if (curP1.mid.length===5 && curP1.bot.length===5 && foul(curP1.top,curP1.mid,curP1.bot)) ok=false;
+          if (ok) dfs(i+1, curP1, moves);
+          // откат
+          moves.pop();
+          curP1[g].pop();
+        }
+      }
+    }
+    dfs(0, {top:p1base.top.slice(), mid:p1base.mid.slice(), bot:p1base.bot.slice()}, []);
+    return best;
+  }
+
+  function bestPine3(){
+    const cards = pool.slice(); // 3 карты
+    const p1base = cloneP1();
+    const free = freeSlots(p1base);
+    // нужно поставить ровно 2, 1 — сбросить
+    let best=null;
+    // выберем какие 2 карты оставляем
+    for (let i=0;i<3;i++){
+      for (let j=i+1;j<3;j++){
+        const keep=[cards[i], cards[j]];
+        // перебрать размещение двух карт по доступным линиям
+        const groups=['top','mid','bot'];
+        function tryPlace(idx, curP1, moves){
+          if (idx===keep.length){
+            const score=evalBoard(curP1);
+            if (!best || score>best.score) best={score, moves:moves.slice()};
+            return;
+          }
+          const card=keep[idx];
+          for (const g of groups){
+            const cap=(g==='top'?3:(g==='mid'?5:5));
+            if (curP1[g].length < cap){
+              curP1[g].push(card);
+              moves.push({group:`p1_${g}`, card});
+              let ok=true;
+              if (curP1.mid.length===5 && curP1.bot.length===5 && foul(curP1.top,curP1.mid,curP1.bot)) ok=false;
+              if (ok) tryPlace(idx+1, curP1, moves);
+              moves.pop(); curP1[g].pop();
+            }
+          }
+        }
+        tryPlace(0, {top:p1base.top.slice(), mid:p1base.mid.slice(), bot:p1base.bot.slice()}, []);
+      }
+    }
+    return best;
+  }
+
+  /* ====== Подсчёт матча (как прежде) ====== */
+  function collectBoth(){ return {
+    p1:{top:collect('p1_top'), mid:collect('p1_mid'), bot:collect('p1_bot')},
+    p2:{top:collect('p2_top'), mid:collect('p2_mid'), bot:collect('p2_bot')}
+  }; }
+
+  function calc(){
+    const unit=parseFloat(document.getElementById('unit').value||'50');
+    const {p1,p2}=collectBoth();
+    const ok=p=>p.top.length===3&&p.mid.length===5&&p.bot.length===5;
+    if(!ok(p1)||!ok(p2)){ alert('У каждого игрока должны быть 3/5/5 карт.'); return; }
+    const all=[...p1.top,...p1.mid,...p1.bot,...p2.top,...p2.mid,...p2.bot];
+    if(new Set(all).size!==all.length){ alert('Дубли карт.'); return; }
+
+    const f1=foul(p1.top,p1.mid,p1.bot), f2=foul(p2.top,p2.mid,p2.bot);
+    let rt1=0,rm1=0,rb1=0,rt2=0,rm2=0,rb2=0;
+    if(!f1){ rt1=royT(p1.top); rm1=royM(p1.mid); rb1=royB(p1.bot); }
+    if(!f2){ rt2=royT(p2.top); rm2=royM(p2.mid); rb2=royB(p2.bot); }
+
+    let pts1=0,pts2=0,note='',topRes='—',midRes='—',botRes='—';
+    if(f1||f2){
+      if(f1&&!f2){ pts1=-6; pts2=+6+(rt2+rm2+rb2); note='Мы сожгли руку.'; }
+      else if(f2&&!f1){ pts1=+6+(rt1+rm1+rb1); pts2=-6; note='Оппонент сжёг руку.'; }
+      else { note='Оба сожгли, линии не считаются.'; }
+    }else{
+      const t1=p3(p1.top).rank,t2=p3(p2.top).rank,m1=p5(p1.mid).rank,m2=p5(p2.mid).rank,b1=p5(p1.bot).rank,b2=p5(p2.bot).rank;
+      const ct=cmp(t1,t2), cm=cmp(m1,m2), cb=cmp(b1,b2);
+      const w1=(ct>0)+(cm>0)+(cb>0), w2=(ct<0)+(cm<0)+(cb<0);
+      topRes=ct>0?'Мы':(ct<0?'Опп.':'Пуш');
+      midRes=cm>0?'Мы':(cm<0?'Опп.':'Пуш');
+      botRes=cb>0?'Мы':(cb<0?'Опп.':'Пуш');
+      const s1=(w1===3)?3:0, s2=(w2===3)?3:0;
+      if(s1&&!s2) note='Наш scoop (+3).';
+      if(s2&&!s1) note='Scoop оппонента (+3).';
+      pts1=(w1-w2)+(s1-s2)+((rt1+rm1+rb1)-(rt2+rm2+rb2)); pts2=-pts1;
+    }
+
+    document.getElementById('result').hidden=false;
+    document.getElementById('lines').innerHTML=`
+      <tr><td>Верх</td><td>${topRes}</td><td>${rt1}</td><td>${rt2}</td></tr>
+      <tr><td>Середина</td><td>${midRes}</td><td>${rm1}</td><td>${rm2}</td></tr>
+      <tr><td>Низ</td><td>${botRes}</td><td>${rb1}</td><td>${rb2}</td></tr>`;
+    document.getElementById('sum').innerHTML=`
+      <table class="result">
+        <tr><th></th><th>Очки</th><th>Рубли</th></tr>
+        <tr><td>Мы</td><td>${pts1}</td><td>${Math.round(pts1*unit)}</td></tr>
+        <tr><td>Оппонент</td><td>${pts2}</td><td>${Math.round(pts2*unit)}</td></tr>
+      </table>`;
+    document.getElementById('notes').textContent=note;
+  }
+
+  /* ====== Служебные: заполнение/очистка/демо ====== */
+  function allCards(){
+    const arr=[]; document.querySelectorAll('.slot').forEach(s=>{ if(s.dataset.card) arr.push(s.dataset.card); });
+    return arr;
+  }
+  function resetAll(){
+    document.querySelectorAll('.slot').forEach(s=>{ s.dataset.card=''; s.textContent=''; });
+    pool=[]; renderPool();
+    phase='start5'; updatePhaseText();
+    document.getElementById('result').hidden=true;
+    updateLineScores();
+  }
+  function demo(){
+    resetAll();
+    // Оппонент
+    [['p2_top',['Js','Jc','2d']],
+     ['p2_mid',['Qs','Qh','Qd','7s','7h']],
+     ['p2_bot',['8s','7s','6s','5s','4s']]].forEach(([g,cards])=>{
+      const slots=document.querySelector(`.slots[data-g="${g}"]`).querySelectorAll('.slot');
+      cards.forEach((code,i)=>{ slots[i].dataset.card=code; slots[i].textContent=code[0]+sym[code[1]]; });
+    });
+    // Мы (пустые — будем играть из пула)
+    updateLineScores();
+  }
+
+  /* ====== Кнопки ====== */
+  document.getElementById('reset').addEventListener('click', resetAll);
+  document.getElementById('demo').addEventListener('click', demo);
+  document.getElementById('calc').addEventListener('click', calc);
+
+  // наблюдатель для обновления счёта на линиях при любом клике по доске
+  document.addEventListener('click', ()=> updateLineScores(), true);
+
+  // init
+  renderPool(); updateLineScores();
+})();
