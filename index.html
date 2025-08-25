@@ -27,13 +27,27 @@
 
   <!-- TOP: ОППОНЕНТ -->
   <section class="player-section">
-    <h2 class="player-name">Оппонент</h2>
+    <div class="player-head">
+      <h2 class="player-name">Оппонент</h2>
+      <div class="score" id="scoreP2">0</div>
+    </div>
     <div class="rows">
-      <div class="row-name">Верх (3)</div>
+      <div class="row-line">
+        <div class="row-name">Верх (3)</div>
+        <div class="row-score" id="p2_top_sc">0</div>
+      </div>
       <div class="slots" data-g="p2_top" data-n="3"></div>
-      <div class="row-name">Середина (5)</div>
+
+      <div class="row-line">
+        <div class="row-name">Середина (5)</div>
+        <div class="row-score" id="p2_mid_sc">0</div>
+      </div>
       <div class="slots" data-g="p2_mid" data-n="5"></div>
-      <div class="row-name">Низ (5)</div>
+
+      <div class="row-line">
+        <div class="row-name">Низ (5)</div>
+        <div class="row-score" id="p2_bot_sc">0</div>
+      </div>
       <div class="slots" data-g="p2_bot" data-n="5"></div>
     </div>
   </section>
@@ -42,24 +56,42 @@
   <section class="center-zone">
     <div class="deal-wrap">
       <div class="deal-title">Зона раздачи</div>
-      <div id="dealCard" class="deal-card empty" aria-label="Карта раздачи"></div>
-      <div class="deal-ctrls">
-        <button class="btn" id="openPicker">Вытянуть карту</button>
-        <button class="btn2" id="clearDeal">Очистить</button>
+      <div class="deal-info">
+        <span id="phaseLabel">Старт: выберите 5 карт</span>
+        <span id="drawCounter" class="muted">0 выбрано</span>
       </div>
-      <p class="hint">Выберите карту, затем коснитесь слота сверху (оппонент) или снизу (вы), чтобы поставить.</p>
+      <div class="deal-pool" id="pool"></div>
+      <div class="deal-ctrls">
+        <button class="btn" id="openPicker">Добавить карту</button>
+        <button class="btn2" id="applyBest">Предложить ход (мы)</button>
+        <button class="btn2" id="clearPool">Очистить пул</button>
+      </div>
     </div>
   </section>
 
   <!-- BOTTOM: МЫ -->
   <section class="player-section">
-    <h2 class="player-name you">Мы</h2>
+    <div class="player-head">
+      <h2 class="player-name you">Мы</h2>
+      <div class="score you" id="scoreP1">0</div>
+    </div>
     <div class="rows">
-      <div class="row-name">Верх (3)</div>
+      <div class="row-line">
+        <div class="row-name">Верх (3)</div>
+        <div class="row-score" id="p1_top_sc">0</div>
+      </div>
       <div class="slots" data-g="p1_top" data-n="3"></div>
-      <div class="row-name">Середина (5)</div>
+
+      <div class="row-line">
+        <div class="row-name">Середина (5)</div>
+        <div class="row-score" id="p1_mid_sc">0</div>
+      </div>
       <div class="slots" data-g="p1_mid" data-n="5"></div>
-      <div class="row-name">Низ (5)</div>
+
+      <div class="row-line">
+        <div class="row-name">Низ (5)</div>
+        <div class="row-score" id="p1_bot_sc">0</div>
+      </div>
       <div class="slots" data-g="p1_bot" data-n="5"></div>
     </div>
   </section>
@@ -73,17 +105,6 @@
       <tbody id="lines"></tbody>
     </table>
     <p class="muted" id="notes"></p>
-  </section>
-
-  <!-- HELP -->
-  <section class="card">
-    <h3>Подсказки</h3>
-    <ul>
-      <li>Верх: пары 66–AA → 1–9; тройки 222–AAA → 10–22.</li>
-      <li>Середина: сет 2, стрит 4, флеш 8, фулл 12, каре 20, стрит‑флеш 30, роял‑флеш 50.</li>
-      <li>Низ: стрит 2, флеш 4, фулл 6, каре 10, стрит‑флеш 15, роял‑флеш 25.</li>
-      <li>Фолт: −6 фолтящему, +6 и роялти сопернику. Скууп: победа на всех линиях +3.</li>
-    </ul>
   </section>
 </div>
 
