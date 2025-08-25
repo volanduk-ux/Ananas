@@ -1,0 +1,8 @@
+{
+  "name": "OFC Assistant",
+  "short_name": "OFC",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#111111"
+}
