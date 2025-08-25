@@ -1,14 +1,8 @@
 :root{
-  /* адаптивный размер карты — под узкие экраны iPhone */
   --card-w: clamp(34px, 7.2vw, 58px);
   --card-h: calc(var(--card-w) * 1.48);
-  --gap: 8px;
-  --radius: 10px;
-  --bg: #f3f4f7;
-  --ink: #111;
-  --muted: #666;
-  --line: #e5e7eb;
-  --panel: #fff;
+  --gap: 8px; --radius: 10px;
+  --bg:#f3f4f7; --ink:#111; --muted:#666; --line:#e5e7eb; --panel:#fff;
 }
 *{box-sizing:border-box}
 html,body{height:100%}
@@ -21,7 +15,7 @@ body{font-family:-apple-system,system-ui,Segoe UI,Roboto,Arial,sans-serif;margin
 .unit input{width:90px;padding:8px;border:1px solid #ccc;border-radius:8px}
 .actions{display:flex;gap:6px;justify-self:end}
 
-.btn,.btn2,.iconbtn{border-radius:10px;padding:10px 14px;font-weight:600}
+.btn,.btn2,.iconbtn{border-radius:10px;padding:10px 14px;font-weight:600;cursor:pointer}
 .btn{background:#111;color:#fff;border:1px solid #111}
 .btn2{background:#fff;color:#111;border:1px solid #999}
 .iconbtn{background:#fff;color:#111;border:1px solid #ddd;line-height:1}
@@ -33,7 +27,7 @@ body{font-family:-apple-system,system-ui,Segoe UI,Roboto,Arial,sans-serif;margin
 .rows{display:grid;grid-template-columns:1fr;gap:6px}
 .row-name{font-weight:700;font-size:13px;color:#333;margin-top:4px}
 .slots{display:grid;grid-template-columns:repeat(5,var(--card-w));gap:var(--gap)}
-.slot{width:var(--card-w);height:var(--card-h);border:1px dashed #bbb;border-radius:var(--radius);background:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;color:#333;cursor:pointer;user-select:none}
+.slot{width:var(--card-w);height:var(--card-h);border:1px dashed #bbb;border-radius:var(--radius);background:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;color:#333;user-select:none;cursor:pointer}
 
 .center-zone{display:flex;justify-content:center;margin:10px 0}
 .deal-wrap{border:1px solid var(--line);border-radius:12px;background:var(--panel);padding:10px;display:grid;gap:8px;justify-items:center;max-width:600px;width:100%}
@@ -48,22 +42,21 @@ body{font-family:-apple-system,system-ui,Segoe UI,Roboto,Arial,sans-serif;margin
 .result{border-collapse:collapse;width:100%}
 .result th,.result td{border-bottom:1px solid var(--line);padding:8px;text-align:left}
 
-/* deck buttons */
-.cb{width:var(--card-w);height:var(--card-h);border:1px solid #aaa;border-radius:var(--radius);background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:800;position:relative}
+/* карточки */
+.cb{width:var(--card-w);height:var(--card-h);border:1px solid #aaa;border-radius:var(--radius);background:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;position:relative;cursor:pointer}
 .cb.disabled{opacity:.28;pointer-events:none}
 .cb .suit{position:absolute;bottom:4px;right:6px;font-size:12px}
 .red{color:#c62828}.black{color:#111}
 .deck{display:grid;grid-template-columns:repeat(13,var(--card-w));gap:var(--gap)}
 
-/* modal */
+/* MODAL (fixed z-index fix) */
 .modal{position:fixed;inset:0;display:none}
 .modal.show{display:block}
-.modal-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.35)}
-.modal-dialog{position:relative;margin:8vh auto 0 auto;max-width:min(980px,96vw);background:#fff;border-radius:12px;padding:12px;border:1px solid var(--line)}
+.modal-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.35);z-index:1}
+.modal-dialog{position:relative;margin:8vh auto 0 auto;max-width:min(980px,96vw);background:#fff;border-radius:12px;padding:12px;border:1px solid var(--line);z-index:2}
 .modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
 .mh-title{font-weight:700}
 
-/* responsive tweaks */
 @media (max-width:420px){
   .hdr{grid-template-columns:1fr 100px auto}
   .ttl{font-size:16px}
